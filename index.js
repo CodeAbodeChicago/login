@@ -32,7 +32,7 @@ var url = 'mongodb://localhost:27017/data'; // connection url
 var db; // global variable for database
 var MongoClient = mongodb.MongoClient; // mongoclient connects to mongodb server
 
-
+var currentUser = {};
 
 // Initialize connection once
 MongoClient.connect(url, function(err, database) {
@@ -62,23 +62,60 @@ app.get('/', function(req, res) {
 });
 
 // post from login page
-app.post('/?*', function(req, res) { 
-  console.log("login query sent!");
-  var nm = req.body.name;
+app.post('/', function(req, res) { 
   var un = req.body.username;
   var pw = req.body.password;
-  var em = req.body.email;
+  var sendPath = '';
 
-  // db.collection("users").find({}, function(err, docs) {
-  //   docs.each(function(err, doc) {
-  //     if(doc) {
-  //       console.log(doc);
-  //     }
-  //   });
-  // });
+  db.collection("users").findOne({"username": un}, function(err, doc) {
+    if(doc) {
+      if (doc.password === pw) {
+        console.log("login successful!");
+        sendPath = '/secrets.html';
+        res.sendFile(publicPath + sendPath);
+     } else {
+        console.log("wrong password");
+        sendPath = '/login.html';
+        res.sendFile(publicPath + sendPath);
+      }
+    } else {
+      console.log("username does not exist!");
+      sendPath = '/login.html';
+      res.sendFile(publicPath + sendPath);
+   }
+  });
 
   console.log('username: ' + un + " password: " + pw);
-  res.send(publicPath + '/login.html');
+});
+
+
+// this is to fix an error with the navigation
+// where you go to login.html sometimes
+// will fix later...
+app.post('/login.html?*', function(req, res) { 
+  var un = req.body.username;
+  var pw = req.body.password;
+  var sendPath = '';
+
+  db.collection("users").findOne({"username": un}, function(err, doc) {
+    if(doc) {
+      if (doc.password === pw) {
+        console.log("login successful!");
+        sendPath = '/secrets.html';
+        res.sendFile(publicPath + sendPath);
+     } else {
+        console.log("wrong password");
+        sendPath = '/login.html';
+        res.sendFile(publicPath + sendPath);
+      }
+    } else {
+      console.log("username does not exist!");
+      sendPath = '/login.html';
+      res.sendFile(publicPath + sendPath);
+   }
+  });
+
+  console.log('username: ' + un + " password: " + pw);
 });
 
 
@@ -90,7 +127,20 @@ app.post('/accountSettings.html?*', function(req, res) {
   var pw = req.body.password;
   var em = req.body.email;
   console.log('name: ' + nm + ' username: ' + un + ' password: ' + pw + ' email: ' + em);
-  res.send(publicPath + '/login.html');
+  db.collection("users").save({"name":nm, "username":un, "password":pw, "email":em});
+  db.collection("users").findOne({"username": un}, function(err, doc) {
+    if(doc) {
+      console.log("found user!");
+      sendPath = '/secrets.html';
+      res.sendFile(publicPath + sendPath);
+    } else {
+      console.log("username does not exist!");
+      // sendPath = '/login.html';
+      // res.sendFile(publicPath + sendPath);
+   }
+  });
+
+  console.log("save successful!");
 });
 
 // post from create account page
@@ -100,14 +150,27 @@ app.post('/createAccount.html?*', function(req, res) {
   var pw = req.body.password;
   var em = req.body.email;
   console.log('name: ' + nm + ' username: ' + un + ' password: ' + pw + ' email: ' + em);
-  res.send(publicPath + '/login.html');
+  db.collection("users").save({"name":nm, "username":un, "password":pw, "email":em});
+  console.log("new account created!");
+  res.sendFile(publicPath + '/login.html');
 });
 
 // post from forgotPassword page
 app.post('/forgotPassword.html?*', function(req, res) { 
   var em = req.body.email;
   console.log('email: ' + em);
-  res.send(publicPath + '/login.html');
+  db.collection("users").findOne({"email": em}, function(err, doc) {
+    if(doc) {
+      console.log("email: " + em);
+      sendPath = '/login.html';
+      res.sendFile(publicPath + sendPath);
+    } else {
+      console.log("email does not exist!");
+      // sendPath = '/login.html';
+      // res.sendFile(publicPath + sendPath);
+   }
+  });
+  // res.send(publicPath + '/login.html');
 });
 
 
@@ -115,3 +178,10 @@ app.post('/forgotPassword.html?*', function(req, res) {
 
 
 
+  // db.collection("users").find({}, function(err, docs) {
+  //   docs.each(function(err, doc) {
+  //     if(doc) {
+  //       console.log(doc);
+  //     }
+  //   });
+  // });
