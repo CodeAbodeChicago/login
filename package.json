@@ -1,0 +1,15 @@
+{
+  "name": "login",
+  "version": "0.0.1",
+  "description": "login",
+  "main": "index.js",
+  "dependencies": {
+    "body-parser": "^1.14.1",
+    "express": "^4.10.2",
+    "mongodb": "~2.0.33",
+    "monk": "~1.0.1"
+  },
+  "engines": {
+    "node": "0.12.4"
+  }
+}

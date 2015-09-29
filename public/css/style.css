@@ -1,0 +1,105 @@
+html{
+  height: 100%;
+}
+body {
+	font-family: "Century Gothic", "sans-serif";
+	text-align: center;
+	background:#E3E3E3;
+}
+
+#wrap {
+	width: 900px;
+	margin: 0 auto;
+}
+.one-column {
+	width: 90%;
+	margin: 0 auto;
+	display: block;
+}
+.one-column > input {
+	width: 66.666666667%;
+}
+.three-column {
+	display: inline-block;
+	width: 23.77777777%;
+	margin-top: 2%;
+	margin-left: 2%;
+	margin-right: 2%;
+}
+
+
+
+/* 
+	HEADER STYLING
+*/
+#wrap > h1 {
+	width: 100%;
+	font-size: 60px;
+	letter-spacing: 3px;
+	text-transform: uppercase;
+	padding: 20px;
+	margin: 0 0 30px 0;
+	color: white;
+	background-color: rgb(84, 206, 236);
+    border-radius: 5px;
+}
+
+
+/* 
+	FORM STYLING
+*/
+form {
+	overflow: hidden;
+    width: 700px;
+    margin: 12% auto 4% auto;
+    background-color: #f7f7f7;
+		color: #5A5A5A;
+    padding: 0;
+    border-radius: 5px;
+/*	font-size: 0;  Hack for not needing to comment out whitespace */
+}
+form h1 {
+	font-size: 32px;
+	margin: 0 0 2.5% 0;
+	padding: 10px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+	background-color: rgba(105, 105, 105, 1.0);
+	color: white;
+	text-transform: uppercase;
+}
+form input {
+	font-size: 16px;
+	padding: 2%;
+	color: #5A5A5A;
+	border: none;
+	outline: none;
+}
+form input:focus {
+	outline: 2px solid rgba(72, 72, 72, 0.25);
+}
+form input[type="submit"] {
+	background-color: rgba(105, 105, 105, 1.0);
+	color: white;
+	text-transform: uppercase;
+	border-bottom: 2px solid rgba(72, 72, 72, 1.0);
+	cursor: pointer;
+	font-size: 26px;
+}
+form input[type="submit"]:hover {
+	background-color: rgba(72, 72, 72, 1.0);
+}
+
+label {
+	font-size: 30px;
+	text-align:right;
+	padding:2px;
+}
+input {
+	vertical-align: middle;
+}
+form .controls {
+	margin: 20px 0;
+}
+
+
