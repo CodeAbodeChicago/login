@@ -1,6 +1,9 @@
 // test connection to mongodb server and
 // create a test 'admin' user
 
+var mongodb = require('mongodb');
+var MongoClient = mongodb.MongoClient; // mongoclient connects to mongodb server
+var url = 'mongodb://localhost:27017/data'; // connection url
 
 // Use connect method to connect to the Server
 MongoClient.connect(url, function (err, db) {

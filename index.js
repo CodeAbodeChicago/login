@@ -2,49 +2,86 @@
 
 // http://blog.modulus.io/mongodb-tutorial
 // https://scotch.io/tutorials/use-expressjs-to-get-url-and-post-parameters
+// https://scotch.io/tutorials/authenticate-a-node-js-api-with-json-web-tokens
 
 // body-parser object for getting post params
 // https://www.npmjs.com/package/body-parser
 
-// require modules
+
+// ***** require modules
 var express = require('express');
 var app = express();
+
+var apiRoutes = express.Router(); // from token auth tutorial
+
+
 
 var bodyParser = require('body-parser');
 
 var path = require('path');
 var mongodb = require('mongodb');
 
+var jwt = require('jsonwebtoken'); // used to create, sign, and authenticate json web tokens
+// https://github.com/auth0/node-jsonwebtoken
+// --> 'npm install jsonwebtoken --save'
 
 
+// ***** configuration
 // serve static files in public path 
 var publicPath = path.join(__dirname, "public");
-
-// middleware
-app.use(express.static(publicPath));
-app.use(bodyParser.json()); // support json encoded bodies
-app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
-
 
 var port = process.env.PORT || 3000; // for deploying to heroku
 var server; // global variable for server
 var url = 'mongodb://localhost:27017/data'; // connection url
 var db; // global variable for database
-var MongoClient = mongodb.MongoClient; // mongoclient connects to mongodb server
+var secretKey = "elephantTornado";
 
 var currentUser = {};
 
-// Initialize connection once
+var MongoClient = mongodb.MongoClient; // mongoclient connects to mongodb server
+
+app.set("secVar", secretKey); // secret variable
+
+
+
+// ***** middleware
+app.use(express.static(publicPath));
+app.use(bodyParser.json()); // support json encoded bodies
+app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
+
+
+apiRoutes.use(function(req, res, next) {
+  // check header, url, or post for token
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  console.log("netflix and chill");
+  // decode token
+  if (token) {
+    // verify secret
+    jwt.verify(token, secretKey, function(err, decoded) {
+      if (err) {
+        return res.send('failed to authenticate token.');
+      } else {
+        // if things are good, save request
+        req.decoded = decoded;
+        next();
+      }
+    });
+  } else {
+    return res.status(403).send("no token provided");
+  }
+});
+
+
+
+// ***** Initialize connection to database once
 MongoClient.connect(url, function(err, database) {
   if (err) {
     console.log('Unable to connect to the mongoDB server. Error:', err);
   } else {
     console.log('Connection established to', url); // HURRAY!! We are connected. :)
 
-
-    // if(err) throw err;
-
-    db = database;
+    // db = database;
+    db = database.collection("users");
 
     // Start the application after the database connection is ready
     server = app.listen(port, function() {
@@ -58,63 +95,45 @@ MongoClient.connect(url, function(err, database) {
 // routing
 // redirect to login page
 app.get('/', function(req, res) { 
-  res.sendFile(publicPath + '/login.html');
+  res.redirect('/login.html');
 });
+
+
 
 // post from login page
-app.post('/', function(req, res) { 
-  var un = req.body.username;
-  var pw = req.body.password;
-  var sendPath = '';
-
-  db.collection("users").findOne({"username": un}, function(err, doc) {
-    if(doc) {
-      if (doc.password === pw) {
-        console.log("login successful!");
-        sendPath = '/secrets.html';
-        res.sendFile(publicPath + sendPath);
-     } else {
-        console.log("wrong password");
-        sendPath = '/login.html';
-        res.sendFile(publicPath + sendPath);
-      }
-    } else {
-      console.log("username does not exist!");
-      sendPath = '/login.html';
-      res.sendFile(publicPath + sendPath);
-   }
-  });
-
-  console.log('username: ' + un + " password: " + pw);
-});
-
-
-// this is to fix an error with the navigation
-// where you go to login.html sometimes
-// will fix later...
 app.post('/login.html?*', function(req, res) { 
   var un = req.body.username;
   var pw = req.body.password;
-  var sendPath = '';
 
-  db.collection("users").findOne({"username": un}, function(err, doc) {
-    if(doc) {
-      if (doc.password === pw) {
-        console.log("login successful!");
-        sendPath = '/secrets.html';
-        res.sendFile(publicPath + sendPath);
-     } else {
-        console.log("wrong password");
-        sendPath = '/login.html';
-        res.sendFile(publicPath + sendPath);
-      }
-    } else {
+  console.log(req.body['x-acess-token']);
+  db.findOne({"username": un}, function(err, doc) {
+    if(!doc) {
       console.log("username does not exist!");
-      sendPath = '/login.html';
-      res.sendFile(publicPath + sendPath);
-   }
-  });
+      // res.redirect('/login.html');
+    } else if (doc) {
+      if (doc.password != pw) {
+        console.log("wrong password");
+        // res.redirect('/login.html');
+      } else {
+        console.log("login successful!");
 
+        // if user is found and password is right
+        // create a token
+        var token = jwt.sign(doc.username, secretKey, {
+          expiresInMinutes: 1440 // expires in 24 hours
+        });
+
+        // return the information including token as JSON
+        res.send({
+          success: true,
+          message: 'Enjoy your token!',
+          token: token
+        });
+
+        // res.redirect('/secrets.html');
+      }
+    }
+  });
   console.log('username: ' + un + " password: " + pw);
 });
 
@@ -127,19 +146,14 @@ app.post('/accountSettings.html?*', function(req, res) {
   var pw = req.body.password;
   var em = req.body.email;
   console.log('name: ' + nm + ' username: ' + un + ' password: ' + pw + ' email: ' + em);
-  db.collection("users").save({"name":nm, "username":un, "password":pw, "email":em});
-  db.collection("users").findOne({"username": un}, function(err, doc) {
+  db.findOne({"username": un}, function(err, doc) {
     if(doc) {
       console.log("found user!");
-      sendPath = '/secrets.html';
-      res.sendFile(publicPath + sendPath);
+      // res.redirect('/secrets.html');
     } else {
       console.log("username does not exist!");
-      // sendPath = '/login.html';
-      // res.sendFile(publicPath + sendPath);
    }
   });
-
   console.log("save successful!");
 });
 
@@ -150,38 +164,45 @@ app.post('/createAccount.html?*', function(req, res) {
   var pw = req.body.password;
   var em = req.body.email;
   console.log('name: ' + nm + ' username: ' + un + ' password: ' + pw + ' email: ' + em);
-  db.collection("users").save({"name":nm, "username":un, "password":pw, "email":em});
-  console.log("new account created!");
-  res.sendFile(publicPath + '/login.html');
+  db.findOne({"username": un}, function(err, doc) {
+    if(doc) {
+      console.log("found user!");
+      // res.redirect('/secrets.html');
+    } else {
+      console.log("username does not exist!");
+      db.insert({"name":nm, "username":un, "password":pw, "email":em});
+      console.log("new account created!");
+   }
+  });
 });
 
 // post from forgotPassword page
 app.post('/forgotPassword.html?*', function(req, res) { 
   var em = req.body.email;
   console.log('email: ' + em);
-  db.collection("users").findOne({"email": em}, function(err, doc) {
+  db.findOne({"email": em}, function(err, doc) {
     if(doc) {
       console.log("email: " + em);
-      sendPath = '/login.html';
-      res.sendFile(publicPath + sendPath);
+      // res.redirect('/login.html');
     } else {
       console.log("email does not exist!");
-      // sendPath = '/login.html';
-      // res.sendFile(publicPath + sendPath);
    }
   });
-  // res.send(publicPath + '/login.html');
+});
+
+// show all users
+app.get('/users', function(req, res) { 
+  db.find().toArray(function(err, doc) {
+    if(doc) {
+      console.log('win!');
+      res.send(doc);
+    } else {
+      console.log("did not find a name!");
+   }
+  });
 });
 
 
 
 
-
-
-  // db.collection("users").find({}, function(err, docs) {
-  //   docs.each(function(err, doc) {
-  //     if(doc) {
-  //       console.log(doc);
-  //     }
-  //   });
-  // });
+// eyJhbGciOiJIUzI1NiJ9.YWRtaW4.gSj29-xH0EvKFGALPiqzIccMHvlrJ5-uwNxamLsNnuU
