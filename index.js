@@ -12,9 +12,6 @@
 var express = require('express');
 var app = express();
 
-var apiRoutes = express.Router(); // from token auth tutorial
-
-
 
 var bodyParser = require('body-parser');
 
@@ -40,7 +37,7 @@ var currentUser = {};
 
 var MongoClient = mongodb.MongoClient; // mongoclient connects to mongodb server
 
-app.set("secVar", secretKey); // secret variable
+app.set("secretKey", secretKey); // secret variable
 
 
 
@@ -48,47 +45,6 @@ app.set("secVar", secretKey); // secret variable
 app.use(express.static(publicPath));
 app.use(bodyParser.json()); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
-
-
-apiRoutes.use(function(req, res, next) {
-  // check header, url, or post for token
-  var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  console.log("netflix and chill");
-  // decode token
-  if (token) {
-    // verify secret
-    jwt.verify(token, secretKey, function(err, decoded) {
-      if (err) {
-        return res.send('failed to authenticate token.');
-      } else {
-        // if things are good, save request
-        req.decoded = decoded;
-        next();
-      }
-    });
-  } else {
-    return res.status(403).send("no token provided");
-  }
-});
-
-
-
-// ***** Initialize connection to database once
-MongoClient.connect(url, function(err, database) {
-  if (err) {
-    console.log('Unable to connect to the mongoDB server. Error:', err);
-  } else {
-    console.log('Connection established to', url); // HURRAY!! We are connected. :)
-
-    // db = database;
-    db = database.collection("users");
-
-    // Start the application after the database connection is ready
-    server = app.listen(port, function() {
-      console.log("listening on *:" + port);
-    });
-  }
-});
 
 
 
@@ -99,9 +55,11 @@ app.get('/', function(req, res) {
 });
 
 
+var apiRoutes = express.Router(); // from token auth tutorial
+
 
 // post from login page
-app.post('/login.html?*', function(req, res) { 
+apiRoutes.post('/login.html?*', function(req, res) { 
   var un = req.body.username;
   var pw = req.body.password;
 
@@ -119,7 +77,7 @@ app.post('/login.html?*', function(req, res) {
 
         // if user is found and password is right
         // create a token
-        var token = jwt.sign(doc.username, secretKey, {
+        var token = jwt.sign(doc.username, app.get('secretKey'), {
           expiresInMinutes: 1440 // expires in 24 hours
         });
 
@@ -190,6 +148,33 @@ app.post('/forgotPassword.html?*', function(req, res) {
   });
 });
 
+
+
+
+apiRoutes.use(function(req, res, next) {
+  // check header, url, or post for token
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  console.log("netflix and chill");
+  // decode token
+  if (token) {
+    // verify secret
+    jwt.verify(token, secretKey, function(err, decoded) {
+      if (err) {
+        return res.send('failed to authenticate token.');
+      } else {
+        // if things are good, save request
+        req.decoded = decoded;
+        next();
+      }
+    });
+  } else {
+    return res.status(403).send("no token provided");
+  }
+});
+
+app.use(apiRoutes);
+
+
 // show all users
 app.get('/users', function(req, res) { 
   db.find().toArray(function(err, doc) {
@@ -203,6 +188,43 @@ app.get('/users', function(req, res) {
 });
 
 
+apiRoutes.get('/', function(req, res) {
+  res.json({ message: 'Welcome to the coolest API on earth!' });
+});
+
+apiRoutes.get('/users', function(req, res) {
+  console.log("you are requesting users");
+  User.find({}, function(err, users) {
+    res.json(users);
+  });
+});
+
+apiRoutes.get('/check', function(req, res) {
+  res.json(req.decoded);
+});
+
+app.use('/api', apiRoutes);
+
+
+// ***** Initialize connection to database once
+MongoClient.connect(url, function(err, database) {
+  if (err) console.log('Unable to connect to the mongoDB server. Error:', err);
+  else console.log('Connection established to', url); // HURRAY!! We are connected. :)
+
+    // db = database;
+    db = database.collection("users");
+  }
+});
+
+
+// Start the application after the database connection is ready
+server = app.listen(port, function() {
+  console.log("listening on *:" + port);
+});
+
+
+
 
 
 // eyJhbGciOiJIUzI1NiJ9.YWRtaW4.gSj29-xH0EvKFGALPiqzIccMHvlrJ5-uwNxamLsNnuU
+// eyJhbGciOiJIUzI1NiJ9.dHJleA.J4jCc1NE-twI7Ucreqgeqv8LzjJUeEkkzIFPxp_ak8M
